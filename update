@@ -3,16 +3,192 @@
 # -*- coding: UTF-8 -*-
 # vim: set fileencoding=UTF-8 :
 
-import sys
 import os
+import imp
+import datetime
+import click
+from sortedcontainers import SortedList
+from collections import defaultdict
+import csv
+import pyperclip
+dateparse = imp.load_source('rotate', './rotate')
 
-# Takes the city and date and outputs the FB-formatted nest post
-# If no date given, pulls from the most-recent nest list with a date stamp of today
-# If a date is given, pulls from the most recent nest list prior to that date and uses that date stamp
+nested_dict = lambda: defaultdict(nested_dict)
+
+'''
+Takes the city and date and outputs the FB-formatted nest post
+If no date given, pulls from the most-recent nest list prior to today
+If a date is given, pulls from the most recent nest list prior to that date
+If no lists are older than the specified date, output error and use oldest available list
+'''
 
 
+# check that you're running a valid city
+def city_folder_check(city, prefix):
+    cfolder = prefix + city + "/"
+    if os.path.exists(cfolder) is False:
+        print("There is no folder for " + city +
+              " in the " + prefix + " directory")
+        return False
+    if next(os.scandir(cfolder), None) is None:
+        print("There are no nest records in " + city + "'s folder")
+        return False
+    return True
+
+
+# ensures you have a valid city folder
+def choose_folder(city=None):
+    prefix = dateparse.outpath
+    while True:
+        if city is not None and city_folder_check(city, prefix) is True:
+            return city, prefix + city + "/"
+        city = input("Which city's nests do you want to list? ")
+
+
+# decorates a string of text by inserting it halfway between the decoration string
+def decorate_text(text, decor):
+    stl = len(decor)//2
+    return decor[:stl] + text + decor[stl:]
+
+
+# finds the closest matching nest list to the given date
+def find_nest_list(path, date):
+    searchlist = SortedList()
+    for file in os.listdir(path):
+        searchlist.add(file)
+
+    # ZZZ to ensure it goes after other files
+    loc = searchlist.bisect_right(str(date) + "ZZZ ") - 1
+    if loc < 0:
+        print("Date " + str(date) +
+            " is prior to any stored rotations.  Using oldest available data instead." )
+        loc = 0
+    recentrotation = searchlist[loc].split(".")[0]
+    return dateparse.getdate(recentrotation), path + searchlist[loc]
+
+
+# checks a nest's status: 0 for no info, 1 for unconfirmed, 2 for confirmed
+def assign_status(species, confirmation):
+    if species.strip() == "":
+        return 0
+    if true_if_Y(confirmation):
+        return 2
+    return 1
+
+
+# returns True if it's a Y
+def true_if_Y(str):
+    if str.strip() == "":
+        return False
+    if str[0].upper() == 'Y':
+        return True
+    return False
+
+
+# loads the nests from a file into memory and separates them by city and status
+def load_nests(nestfile):
+    nestlist = nested_dict()
+    f = open(nestfile, 'r')
+    nests = csv.DictReader(f, delimiter="\t")
+    for nest in nests:
+        loc = nest["Location"]
+        if loc == "":
+            loc = "ZZZZZZNo location information"  # sort at the end
+        stat = assign_status(nest["Species"], nest["Confirm?"])
+        name = nest["Primary Name"].strip()
+        nestlist[loc][stat][name]["Private"] = true_if_Y(nest["Private Property?"])
+        nestlist[loc][stat][name]["Alt"] = nest["Alternate Name"].strip()
+        nestlist[loc][stat][name]["Note"] = nest["Notes"].strip()
+        nestlist[loc][stat][name]["Species"] = nest["Species"].strip()
+    f.close()
+    return nestlist
+
+
+# converts the status into text
+def disp_status(statnum):
+    if statnum == 0:
+        return "No information"
+    if statnum == 1:
+        return "Unconfirmed"
+    if statnum == 2:
+        return "Confirmed"
+    return "Invalid data"
+
+
+# generates a parenthetical containing notes and a private property notice when needed
+# assumes at least one of these is true or populated
+def gen_parenthetical(notes, private):
+    privatenotice = "Private property—please be respectful"
+    if notes == "":
+        return decorate_text(privatenotice, "()")
+    if not private:
+        return decorate_text(notes, "()")
+    combined = notes + "; " + privatenotice.lower()
+    return decorate_text(combined, "()")
+
+
+# outputs the formatted nest list for the FB post
+# nnl stands for Nested Nest List
+def FB_format_nests(nnl):
+    list = ""
+    for location in sorted(nnl.keys()):
+        # use "ZZZ" instead of just "Z" to accommodate Zanesville
+        # and any city that two consecutive Z in its name
+        list += decorate_text(location.split("ZZZ")[-1], "{~()~}") + '\n\n'
+        # confirmed nests at the top
+        for status in sorted(nnl[location].keys(), reverse=True):
+            list += decorate_text(disp_status(status), "[]") + '\n'
+            for nestname in nnl[location][status]:
+                nest = nnl[location][status][nestname]
+                list += nestname  # nest name
+                if nest["Alt"] != "":
+                    list += "/" + nest["Alt"]
+                if nest["Note"] != "" or nest["Private"]:
+                    list += " " + gen_parenthetical(nest["Note"], nest["Private"])
+                if status != 0:
+                    list += ": " + nest["Species"]
+                list += '\n'  # prepare for next item
+            list += '\n'
+        list += '\n'
+    return list
+
+
+# Preamble for FB post
+# dates here should be previously-formatted as strings
+def FB_preamble(updated8, rotationday):
+    out = "#Nests #Tracking #Migration\n"
+    out += rotationday + " nest shift\n"
+    out += "Last updated: " + updated8 + "\n\n"
+    return out
+
+
+@click.command()
+@click.option(
+        '-d',
+        '--date',
+        default=str(datetime.datetime.today().date()),
+        prompt="Generate list of nests as of this date",
+        help="Generate list of nests as of this date"
+        )
+@click.option(
+        '-c',
+        '--city',
+        '-f',
+        prompt="Generate nest list of this city",
+        help="Specify city for list generation"
+        )
 # main method
-def main():
+def main(city=None, date=None):
+    city, path = choose_folder(city)
+    date = dateparse.getdate(date)
+    rundate = date.strftime('%d %b %Y')
+    print("Gathering nests for " + city + " as of " + rundate)
+    rot8d8, listfile = find_nest_list(path, date)
+    shiftdate = str(rot8d8)
+    print("Using the nest list from the " + shiftdate + " nest rotation")
+    output = FB_format_nests(load_nests(listfile))
+    pyperclip.copy(FB_preamble(rundate, shiftdate) + output)
+    print("Nest list copied to clipboard")
     return
 
 if __name__ == "__main__":
