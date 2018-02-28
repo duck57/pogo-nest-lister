@@ -13,8 +13,8 @@ from collections import OrderedDict
 ext = ".tsv"
 citypath = "cities/"
 
-# set this to the empty string to run it in production mode and overwrite the city's file
-# put something here to run in test mode and generate a separate output file
+# empty string to run in production mode and overwrite the city's file
+# put text here to run test mode and generate a separate output file
 tstext = ""
 
 
@@ -75,9 +75,13 @@ def sort_nests(nestlist):
 def write_nests(nestlist, cfile):
     out = open(cfile+tstext, "w")
     #print(nestlist)
-    writer = csv.DictWriter(out, delimiter="\t", fieldnames=nestlist[""], quoting=csv.QUOTE_ALL)
+    writer = csv.DictWriter(
+            out,
+            delimiter="\t",
+            fieldnames=nestlist[""],
+            quoting=csv.QUOTE_ALL)
     writer.writeheader()
-    del nestlist[""] # remove the header row (different use than rest of the list)
+    del nestlist[""]  # remove the header row (different use than rest of the list)
     for nest in nestlist:
         writer.writerow(nestlist[nest])
     out.close()
