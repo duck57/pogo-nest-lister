@@ -1,4 +1,4 @@
-# Pokénests
+# PoGo Nest Lister
 
 ##### A system for tracking PoGo nest migrations for your city's parks
 
@@ -13,14 +13,14 @@ managable.
 
 1. Make a file in the `Cities` folder for your area (PRs with new cities
    welcome, see `Columbus.tsv` for the reference implementation).
-2. Alphabetize your nests for easier reference with `python3 sort.py <CITY>` (your city must
-   have its list alphabetized for your add city PR to be accepted)
-3. Every migration, run `python3 rotate.py -c <CITY>`, which will generate an
-   output file in the `hist-nest/\<CITY\>/YYYY-MM-DD.tsv` format
+2. Alphabetize your nests for easier reference with `./sort <CITY>` (your city
+   must have its list alphabetized for your add city PR to be accepted)
+3. Every migration, run `./rotate -c <CITY>`, which will generate an output
+   file in the `hist-nest/\<CITY\>/YYYY-MM-DD.tsv` format
 4. Edit the file in the `hist-nest` folder for the rotation as new nests come
    in
-5. To generate the text formatted to share with Facebook, run `python3
-   update.py -c <CITY>`
+5. To generate the text formatted to share with Facebook, run ` ./update -c
+   <CITY>`
 
 ### Notes
 
@@ -32,6 +32,6 @@ managable.
    the text for a prior nest rotation
 4. I've only tested this on my Mac so far and I have no idea how a Windows
    Python setup would work.  I can also test under FreeBSD if you ask nicely.
-5. Requires the `dateutil` package to be installed.  `pip3 install python-dateutil`
-   does the trick
+5. Requires the `dateutil` and `click` packages to be installed.  They are
+   listed as `python-dateutil` and `click` in `pip3`
 6. Feature requests are tracked in the issues tab with the `enhancement` label.
