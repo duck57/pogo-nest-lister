@@ -162,6 +162,69 @@ def FB_preamble(updated8, rotationday):
     return out
 
 
+# Preamble for Discord
+def disc_preamble(updated8, rotationday):
+    out = decorate_text(rotationday, "``") + " nest shift\n"
+    out += "Last updated: " + updated8 + "\n\n"
+    out += "**Bold** species are confirmed; _italic_ are single-reported\n\n"
+    return out
+
+
+# generate and copy a Discord post to the clipboard
+# assumes all lines are roughly the same length and you don't troll with a 2000+ chars
+def disc_posts(listfile, rundate, shiftdate):
+    nnl = load_nests(listfile)
+    list = []
+    olen = 0
+    pre = disc_preamble(rundate, shiftdate)
+    olen += len(pre)
+    list.append(pre)
+
+    # reformat to omit no-info nests for Discord
+    nnl2 = nested_dict()
+    for loc in nnl:
+        for stat in nnl[loc]:
+            if stat == 0:
+                continue
+            for nest in nnl[loc][stat]:
+                nnl2[loc][nest] = nnl[loc][stat][nest].copy()
+                nnl2[loc][nest]['Status'] = stat
+    for loc in sorted(nnl2.keys()):
+        loclst = decorate_text(loc, '__****__') + '\n'
+        for nestname in sorted(nnl2[loc].keys()):
+            loclst += nestname
+            nest = nnl2[loc][nestname]
+            if nest["Alt"] != '':
+                loclst += '/' + str(nest["Alt"])
+            loclst += ": " + decorate_text(nest["Species"], '****' if nest["Status"] == 2 else '__') + '\n'
+        if len(loclst) > 2000:
+            raise Exception("Nest list for sub-region " + loc + """ exceeds 2000 characters,
+            which causes Discord problems.  Consider breaking into smaller areas.""")
+        olen += len(loclst)
+        list.append(loclst)
+
+    start = 0
+    end = 0
+    num = olen//2000 + 1
+    pts = len(list)//num
+    for pos in range(num):
+        start = pos*pts
+        end = start + pts
+        pyperclip.copy(''.join(list[start:end]))
+        if pos+1 < num:
+            input("Copied part " + str(pos+1) + " of " + str(num) + " to the clipboard. Press enter or return to continue.")
+        else:
+            print("Copied part " + str(num) + " of " + str(num) + " to the clipboard.")
+
+
+
+# generate and copy a FB post to the clipboard
+def FB_post(listfile, rundate, shiftdate):
+    output = FB_format_nests(load_nests(listfile))
+    pyperclip.copy(FB_preamble(rundate, shiftdate) + output)
+    print("Nest list copied to clipboard")
+
+
 @click.command()
 @click.option(
         '-d',
@@ -177,8 +240,14 @@ def FB_preamble(updated8, rotationday):
         prompt="Generate nest list of this city",
         help="Specify city for list generation"
         )
+@click.option(
+    '-o',
+    '--format',
+    type=click.Choice(['FB','Facebook','f','d','Discord','disc']),
+    prompt="Output format",
+    help="Specify the output formatting for the nest list")
 # main method
-def main(city=None, date=None):
+def main(city=None, date=None, format=None):
     city, path = choose_folder(city)
     date = dateparse.getdate(date)
     rundate = date.strftime('%d %b %Y')
@@ -186,9 +255,13 @@ def main(city=None, date=None):
     rot8d8, listfile = find_nest_list(path, date)
     shiftdate = str(rot8d8)
     print("Using the nest list from the " + shiftdate + " nest rotation")
-    output = FB_format_nests(load_nests(listfile))
-    pyperclip.copy(FB_preamble(rundate, shiftdate) + output)
-    print("Nest list copied to clipboard")
+    format_name = "Unspecified"
+    if format[0].lower() == 'f':
+        format_name = "Facebook"
+        FB_post(listfile, rundate, shiftdate)
+    if format[0].lower() == 'd':
+        format_name = "Discord"
+        disc_posts(listfile, rundate, shiftdate)
     return
 
 if __name__ == "__main__":
