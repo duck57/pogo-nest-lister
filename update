@@ -178,6 +178,7 @@ def disc_posts(listfile, rundate, shiftdate):
     olen = 0
     pre = disc_preamble(rundate, shiftdate)
     olen += len(pre)
+    list.append('') # this is required for things to split up right later
     list.append(pre)
 
     # reformat to omit no-info nests for Discord
@@ -208,7 +209,7 @@ def disc_posts(listfile, rundate, shiftdate):
     num = olen//2000 + 1
     pts = len(list)//num
     for pos in range(num):
-        start = pos*pts
+        start = pos*pts + 1
         end = start + pts
         pyperclip.copy(''.join(list[start:end]))
         if pos+1 < num:
