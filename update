@@ -153,6 +153,30 @@ def FB_format_nests(nnl):
     return list
 
 
+def make_summary(nnl):
+    summary = nested_dict()
+    for location in nnl.keys():
+        for status in nnl[location].keys():
+            if status == 0:  # remove empty nests
+                continue
+            for park in nnl[location][status].keys():
+                summary[nnl[location][status][park]["Species"]][park] = park
+    return summary
+
+def FB_summary(nnl):
+    summary = make_summary(nnl)
+    out = decorate_text("Summary", "[--  --]")
+    for species in sorted(summary.keys()):
+        out += "\n" + species + ":"
+        first = True
+        for park in sorted(summary[species].keys()):
+            if first is False:
+                out += ","
+            out += " " + park
+            first = False
+    out += "\n\n"
+    return out
+
 # Preamble for FB post
 # dates here should be previously-formatted as strings
 def FB_preamble(updated8, rotationday):
@@ -221,8 +245,10 @@ def disc_posts(listfile, rundate, shiftdate):
 
 # generate and copy a FB post to the clipboard
 def FB_post(listfile, rundate, shiftdate):
-    output = FB_format_nests(load_nests(listfile))
-    pyperclip.copy(FB_preamble(rundate, shiftdate) + output)
+    nnl = load_nests(listfile)
+    output = FB_format_nests(nnl)
+    summary = FB_summary(nnl)
+    pyperclip.copy(FB_preamble(rundate, shiftdate) + summary + output)
     print("Nest list copied to clipboard")
 
 
