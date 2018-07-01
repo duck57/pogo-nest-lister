@@ -1,5 +1,7 @@
 hist-list/*
 cities/junktest*
+current.cfg
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

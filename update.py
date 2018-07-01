@@ -10,7 +10,6 @@ from sortedcontainers import SortedList
 from collections import defaultdict
 import csv
 import pyperclip
-# dateparse = imp.load_source('rotate', './rotate')
 import rotate as dateparse
 
 nested_dict = lambda: defaultdict(nested_dict)

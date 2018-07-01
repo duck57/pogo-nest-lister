@@ -5,7 +5,6 @@
 
 import os
 import importlib
-#sort = imp.load_source('sort', './sort')
 import sort
 from shutil import copyfile
 import datetime #as dateutil
