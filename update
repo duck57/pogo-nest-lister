@@ -4,14 +4,15 @@
 # vim: set fileencoding=UTF-8 :
 
 import os
-import imp
+import importlib
 import datetime
 import click
 from sortedcontainers import SortedList
 from collections import defaultdict
 import csv
 import pyperclip
-dateparse = imp.load_source('rotate', './rotate')
+#dateparse = imp.load_source('rotate', './rotate')
+import rotate as dateparse
 
 nested_dict = lambda: defaultdict(nested_dict)
 
@@ -160,7 +161,7 @@ def make_summary(nnl):
             if status == 0:  # remove empty nests
                 continue
             for park in nnl[location][status].keys():
-                summary[nnl[location][status][park]["Species"]][park] = park
+                summary[nnl[location][status][park]["Species"]][park] = status
     return summary
 
 def FB_summary(nnl):
@@ -173,6 +174,8 @@ def FB_summary(nnl):
             if first is False:
                 out += ","
             out += " " + park
+            if summary[species][park] == 1:
+                out += "*"
             first = False
     out += "\n\n"
     return out

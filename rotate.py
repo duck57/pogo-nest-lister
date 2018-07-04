@@ -4,10 +4,11 @@
 # vim: set fileencoding=UTF-8 :
 
 import os
-import imp
-sort = imp.load_source('sort', './sort')
+import importlib
+#sort = imp.load_source('sort', './sort')
+import sort
 from shutil import copyfile
-import datetime
+import datetime #as dateutil
 from dateutil.parser import *
 from dateutil.relativedelta import *
 import click
