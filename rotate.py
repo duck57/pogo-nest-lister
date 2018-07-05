@@ -62,8 +62,8 @@ def getdate(date=None):
     today = datetime.datetime.today()
     while True:
         if date is None:
-            date = date = input("What is the date of the nest rotation (blank for today, " + str(today.date()) + ")? ")
-        if date.strip() == "":
+            date = input("What is the date of the nest rotation (blank for today, " + str(today.date()) + ")? ")
+        if date.strip() == "" or (len(date)==1 and date[0].lower()=="t"):
             return today.date()
         if date[0].lower() in "ymwt" and len(date) > 2 and date[1] in "+-" and str_int(date[1:]):
             dateshift = int(date[1:])
