@@ -4,14 +4,13 @@
 # vim: set fileencoding=UTF-8 :
 
 import os
-import importlib
 import datetime
 import click
 from sortedcontainers import SortedList
 from collections import defaultdict
 import csv
 import pyperclip
-#dateparse = imp.load_source('rotate', './rotate')
+# dateparse = imp.load_source('rotate', './rotate')
 import rotate as dateparse
 
 nested_dict = lambda: defaultdict(nested_dict)
@@ -62,7 +61,7 @@ def find_nest_list(path, date):
     loc = searchlist.bisect_right(str(date) + "ZZZ ") - 1
     if loc < 0:
         print("Date " + str(date) +
-            " is prior to any stored rotations.  Using oldest available data instead." )
+            " is prior to any stored rotations.  Using oldest available data instead.")
         loc = 0
     recentrotation = searchlist[loc].split(".")[0]
     return dateparse.getdate(recentrotation), path + searchlist[loc]
@@ -215,25 +214,17 @@ def disc_preamble(updated8, rotationday):
 
 
 # generate and copy a Discord post to the clipboard
-# assumes all lines are roughly the same length and you don't troll with a 2000+ chars
+# assumes all lines are roughly the same length and you don't troll
+# with a 2000+ chars line for a single region
 def disc_posts(listfile, rundate, shiftdate):
-    nnl = load_nests(listfile)
+    nnl2, _ = load_nests(listfile)  # 2 to match other naming conventions
     list = []
     olen = 0
     pre = disc_preamble(rundate, shiftdate)
     olen += len(pre)
-    list.append('') # this is required for things to split up right later
+    list.append('')  # this is required for things to split up right later
     list.append(pre)
 
-    # reformat to omit no-info nests for Discord
-    nnl2 = nested_dict()
-    for loc in nnl:
-        for stat in nnl[loc]:
-            if stat == 0:
-                continue
-            for nest in nnl[loc][stat]:
-                nnl2[loc][nest] = nnl[loc][stat][nest].copy()
-                nnl2[loc][nest]['Status'] = stat
     for loc in sorted(nnl2.keys()):
         loclst = decorate_text(loc, '__****__') + '\n'
         for nestname in sorted(nnl2[loc].keys()):
@@ -260,7 +251,6 @@ def disc_posts(listfile, rundate, shiftdate):
             input("Copied part " + str(pos+1) + " of " + str(num) + " to the clipboard. Press enter or return to continue.")
         else:
             print("Copied part " + str(num) + " of " + str(num) + " to the clipboard.")
-
 
 
 # generate and copy a FB post to the clipboard
@@ -290,7 +280,7 @@ def FB_post(listfile, rundate, shiftdate):
 @click.option(
     '-o',
     '--format',
-    type=click.Choice(['FB','Facebook','f','d','Discord','disc']),
+    type=click.Choice(['FB', 'Facebook', 'f', 'd', 'Discord', 'disc']),
     prompt="Output format",
     help="Specify the output formatting for the nest list")
 # main method
@@ -302,12 +292,9 @@ def main(city=None, date=None, format=None):
     rot8d8, listfile = find_nest_list(path, date)
     shiftdate = str(rot8d8)
     print("Using the nest list from the " + shiftdate + " nest rotation")
-    format_name = "Unspecified"
     if format[0].lower() == 'f':
-        format_name = "Facebook"
         FB_post(listfile, rundate, shiftdate)
     if format[0].lower() == 'd':
-        format_name = "Discord"
         disc_posts(listfile, rundate, shiftdate)
     return
 
