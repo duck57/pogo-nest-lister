@@ -1,7 +1,11 @@
 hist-list/*
 cities/junktest*
 current.cfg
-
+nests.db
+test*.cfg
+test*.py
+test*.db
+*tst.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
