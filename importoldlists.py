@@ -194,16 +194,24 @@ def import_city(cfile, dbcon):
     cmem.close()
 
 
+# also add some city selection code soon
 def main():
-    database = "testdb.db"
+    cfile = sort.choose_city(None)
+    cname = cfile.split("/")[1][:-len(sort.ext)]  # just the name
+    database = cname + ".db"
     conn = create_connection(database)
     if conn is None:
         print("Error creating database")
         return None
     setup_db(conn)
-    cfile = sort.choose_city("Columbus.tsv")  # hard-code as this is just a test
+
+    # comment out the below three lines if you have successfully imported the nest list
+    # but had trouble importing the historical nest data
     import_city(cfile, conn)
     conn.commit()
+    print("Successfully imported nest list from " + cfile + " into database " + database)
+
+    print("Attempting to ")
 
 
 if __name__ == '__main__':
