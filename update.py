@@ -4,6 +4,7 @@
 # vim: set fileencoding=UTF-8 :
 
 import os
+import importlib
 import datetime
 import click
 from sortedcontainers import SortedList
@@ -29,7 +30,14 @@ def city_folder_check(city, prefix):
         print("There is no folder for " + city +
               " in the " + prefix + " directory")
         return False
-    if next(os.scandir(cfolder), None) is None:
+
+    # ignore .hidden files and folders
+    files = 0
+    for f in os.listdir(cfolder):
+        if not f.startswith('.') and os.path.isfile(cfolder + f):
+            files += 1
+
+    if files == 0:
         print("There are no nest records in " + city + "'s folder")
         return False
     return True
@@ -54,7 +62,8 @@ def decorate_text(text, decor):
 def find_nest_list(path, date):
     searchlist = SortedList()
     for file in os.listdir(path):
-        searchlist.add(file)
+        if not file.startswith('.') and os.path.isfile(path + file):
+            searchlist.add(file)
 
     # ZZZ to ensure it goes after other files
     loc = searchlist.bisect_right(str(date) + "ZZZ ") - 1
