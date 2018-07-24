@@ -10,8 +10,11 @@ import click
 from sortedcontainers import SortedList
 from collections import defaultdict
 import csv
+import sqlite3
+from sqlite3 import Error
 import pyperclip
 import rotate as dateparse
+import importoldlists as dbutils
 
 nested_dict = lambda: defaultdict(nested_dict)
 
@@ -262,12 +265,115 @@ def disc_posts(listfile, rundate, shiftdate):
 
 
 # generate and copy a FB post to the clipboard
-def FB_post(listfile, rundate, shiftdate):
-    nnl, nulls = load_nests(listfile)
-    output = FB_format_nests(nnl, nulls)
-    summary = FB_summary(nnl)
-    pyperclip.copy(FB_preamble(rundate, shiftdate) + summary + decorate_text(" • ", "---==<>==---") + "\n\n" + output)
+def FB_post(nnl, rundate, shiftdate, mt=None, slist=None):
+    detail = FB_format_nests(nnl)
+    summary = FB_summary(slist) if slist is not None else ''
+    empty = FB_emtpy(mt) if mt is not None else ''
+    pyperclip.copy(FB_preamble(rundate, shiftdate) + summary + decorate_text(" • ", "---==<>==---") + "\n\n" + detail + decorate_text(" • ", "---==<>==---") + "\n\n" + empty)
     print("Nest list copied to clipboard")
+
+
+# select the most recent date on or before the supplied date from the database
+# returns the rotation number and the corresponding YYYY-MM-DD date
+def get_rot8d8(today, dbc):
+    sql = "SELECT * FROM rotation_dates WHERE date <= ? ORDER BY date DESC LIMIT 1"
+    cur = dbc.cursor()
+    cur.execute(sql, [today])
+    res = cur.fetchall()
+    if len(res) > 0:
+        return res[0][0], res[0][1]
+    print("Date " + today + " is older than anything in the database.  Using oldest data instead.")
+    sql = "SELECT * FROM rotation_dates LIMIT 1"
+    cur.execute(sql)
+    res = cur.fetchall()
+    return res[0][0], res[0][1]
+
+
+# returns the nest's location from the SQL data
+# assumes neighborhood & region data are names (not IDs) in positions 7 & 8
+def get_sortloc(nestrow):
+    if nestrow[7] is None:
+        return "ZZZZZZNo location information"
+    elif nestrow[8] is None:
+        return nestrow[7]
+    else:
+        return nestrow[8]
+
+
+# turns a SQL result nest row into an NNL entry
+# the dbc is only necessary if you want to look up and include alternate names
+def nstrw2nnl(nestrow, dbc=None):
+    nst = nested_dict()
+    nst["Official Name"] = nestrow[3]
+    nst["Short Name"] = nestrow[4]
+    nst["Neighborhood"] = nestrow[7]
+    nst["Region"] = nestrow[8]
+    nst["Species"] = nestrow[0]
+    nst["Private"] = nestrow[6]
+    nst["Note"] = nestrow[5]
+    nst["Status"] = 2 if nestrow[1] == 1 else 1
+    if dbc is None:
+        nst["Alt"] = ''
+        return nst
+    slalts = "SELECT name FROM alt_names WHERE main_entry = ?"
+    cur = dbc.cursor()
+    cur.execute(slalts, [nestrow[2]])
+    rawalt = cur.fetchall()
+    altlst = []
+    for alt in rawalt:
+        altlst.append(alt[0])
+    nst["Alt"] = '/'.join(altlst)
+    return nst
+
+
+# prefers the short name over primary name currently
+def nestname(nestrow):
+    return nestrow[4] if nestrow[4] is not None else nestrow[3]
+
+
+# returns the nested nest list and stack of empties
+def get_nests(rotnum, dbc):
+    nestout = nested_dict()
+    nestmt  = nested_dict()
+    ssumry  = nested_dict()
+    sqnests = """SELECT
+                    sl.species_txt AS Species --0
+                    ,sl.confirmation AS 'Confirmed?' --1
+                    ,nls.nest_id --2
+                    ,nls.official_name AS 'Primary Name' --3
+                    ,nls.short_name AS 'Short Name' --4
+                    ,nls.notes AS 'Park Notes' --5
+                    ,nls.private AS 'Private Property?' --6
+                    ,nbz.name AS 'Neighborhood' --7
+                    ,regions.name AS 'Location' --8
+                FROM species_list AS sl
+                    LEFT OUTER JOIN nest_locations AS nls ON (sl.nestid = nls.nest_id)
+                    LEFT OUTER JOIN neighborhoods AS nbz ON (nls.location = nbz.id)
+                    LEFT OUTER JOIN regions ON (nbz.region = regions.id)
+                WHERE sl.rotation_num = ?"""
+    sqmt = """SELECT
+                NULL,NULL --fill in for 0 and 1
+                ,nls.nest_id --2
+                ,nls.official_name AS 'Primary Name' --3
+                ,nls.short_name AS 'Short Name' --4
+                ,nls.notes AS 'Park Notes' --5
+                ,nls.private AS 'Private Property?' --6
+                ,nbz.name AS 'Neighborhood' --7
+                ,regions.name AS 'Location' --8
+            FROM nest_locations AS nls
+                LEFT OUTER JOIN neighborhoods AS nbz ON (nls.location = nbz.id)
+                LEFT OUTER JOIN regions ON (nbz.region = regions.id)
+            WHERE nls.nest_id NOT IN (
+                SELECT nestid FROM species_list
+                WHERE rotation_num = ?
+            )"""
+    cur = dbc.cursor()
+    cur.execute(sqnests, [rotnum])
+    rawnests = cur.fetchall()
+    for nestrow in rawnests:
+        nestout[get_sortloc(nestrow)][nestname(nestrow)] = nstrw2nnl(nestrow, dbc)
+        ssumry[nestrow[0]][nestname(nestrow)] = nstrw2nnl(nestrow, dbc)
+    return nestout, nestmt, ssumry
 
 
 @click.command()
@@ -279,13 +385,6 @@ def FB_post(listfile, rundate, shiftdate):
         help="Generate list of nests as of this date"
         )
 @click.option(
-        '-c',
-        '--city',
-        '-f',
-        prompt="Generate nest list of this city",
-        help="Specify city for list generation"
-        )
-@click.option(
     '-o',
     '--format',
     type=click.Choice(['FB', 'Facebook', 'f', 'd', 'Discord', 'disc']),
@@ -293,17 +392,30 @@ def FB_post(listfile, rundate, shiftdate):
     help="Specify the output formatting for the nest list")
 # main method
 def main(city=None, date=None, format=None):
-    city, path = choose_folder(city)
     date = dateparse.getdate(date)
     rundate = date.strftime('%d %b %Y')
-    print("Gathering nests for " + city + " as of " + rundate)
-    rot8d8, listfile = find_nest_list(path, date)
-    shiftdate = str(rot8d8)
+    print("Gathering nests as of " + rundate)
+    dbfile = "nests.db"
+    dbc = dbutils.create_connection(dbfile)
+    if dbc is None:
+        print("Error creating database")
+        return None
+
+    rotnum, shiftdate = get_rot8d8(date, dbc)
+    nests, empties, species = get_nests(rotnum, dbc)
     print("Using the nest list from the " + shiftdate + " nest rotation")
     if format[0].lower() == 'f':
+<<<<<<< HEAD
         FB_post(listfile, rundate, shiftdate)
     if format[0].lower() == 'd':
         disc_posts(listfile, rundate, shiftdate)
+=======
+        format_name = "Facebook"
+        FB_post(nests, rundate, shiftdate, slist=species, mt=empties)
+    if format[0].lower() == 'd':
+        format_name = "Discord"
+        disc_posts(nests, rundate, shiftdate, slist=species)
+>>>>>>> Save changes before rebasing form the master branch
     return
 
 if __name__ == "__main__":
