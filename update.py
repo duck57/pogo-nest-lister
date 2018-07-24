@@ -146,7 +146,7 @@ def gen_parenthetical(notes, private):
 
 # outputs the formatted nest list for the FB post
 # nnl stands for Nested Nest List
-def FB_format_nests(nnl, empties=None):
+def FB_format_nests(nnl):
     list = ""
     for location in sorted(nnl.keys()):
         # use "ZZZ" instead of just "Z" to accommodate Zanesville
@@ -167,10 +167,11 @@ def FB_format_nests(nnl, empties=None):
                 list += "*"
             list += '\n'  # prepare for next item
         list += '\n'
-    if empties is None or len(empties) == 0:
-        return list
-    # code from here on probably won't see much action anymore
-    list += decorate_text("No Reports", "[--  --]") + '\n'
+    return list
+
+
+def FB_empty(empties):
+    list = decorate_text("No Reports", "[--  --]") + '\n'
     for location in sorted(empties.keys()):
         list += "• " + location + ": "
         first = True
@@ -192,6 +193,7 @@ def make_summary(nnl):
             #    continue  # there shuold no longer be empty nests in the main list
             summary[nnl[location][park]["Species"]][park] = status
     return summary
+
 
 def FB_summary(nnl):
     summary = make_summary(nnl)
@@ -275,10 +277,10 @@ def FB_post(nnl, rundate, shiftdate, mt=None, slist=None):
     if slist is not None:
         post += FB_summary(slist)
         post += decorate_text(" • ", "---==<>==---") + "\n\n"
-    post += FB_format_nests(nnl, None)
+    post += FB_format_nests(nnl)
     if mt is not None:
-        post += decorate_text(" • ", "---==<>==---") + "\n\n"
-        #post += FB_empty(mt)
+        # post += decorate_text(" • ", "---==<>==---") + "\n\n"
+        post += FB_empty(mt)
     pyperclip.copy(post)
     print("Nest list copied to clipboard")
 
@@ -383,6 +385,10 @@ def get_nests(rotnum, dbc):
     for nestrow in rawnests:
         nestout[get_sortloc(nestrow)][nestname(nestrow)] = nstrw2nnl(nestrow, dbc)
         ssumry[nestrow[0]][nestname(nestrow)] = nstrw2nnl(nestrow, dbc)
+    cur.execute(sqmt, [rotnum])
+    emptyrows = cur.fetchall()
+    for nestrow in emptyrows:
+        nestmt[nestrow[7]][nestname(nestrow)] = nstrw2nnl(nestrow, dbc)
     return nestout, nestmt, ssumry
 
 
