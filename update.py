@@ -146,7 +146,7 @@ def gen_parenthetical(notes, private):
 
 # outputs the formatted nest list for the FB post
 # nnl stands for Nested Nest List
-def FB_format_nests(nnl, empties):
+def FB_format_nests(nnl, empties=None):
     list = ""
     for location in sorted(nnl.keys()):
         # use "ZZZ" instead of just "Z" to accommodate Zanesville
@@ -155,18 +155,21 @@ def FB_format_nests(nnl, empties):
         for nestname in nnl[location]:
             status = nnl[location][nestname]["Status"]
             nest = nnl[location][nestname]
+            if nest["Private"]:
+                list += '☝️'  # private property reminder
             list += nestname  # nest name
             if nest["Alt"] != "":
                 list += "/" + nest["Alt"]
-            if nest["Note"] != "" or nest["Private"]:
-                list += " " + gen_parenthetical(nest["Note"], nest["Private"])
+            if nest["Note"] is not None and nest["Note"] != "":
+                list += " " + gen_parenthetical(nest["Note"], '')
             list += ": " + nest["Species"]
             if status == 1:
                 list += "*"
             list += '\n'  # prepare for next item
         list += '\n'
-    if len(empties) == 0:
+    if empties is None or len(empties) == 0:
         return list
+    # code from here on probably won't see much action anymore
     list += decorate_text("No Reports", "[--  --]") + '\n'
     for location in sorted(empties.keys()):
         list += "• " + location + ": "
@@ -199,6 +202,8 @@ def FB_summary(nnl):
         for park in sorted(summary[species].keys()):
             if first is False:
                 out += ","
+            #if summary[species][park]["Private"]:
+            #    out += '☝️'
             out += " " + park
             if summary[species][park] == 1:
                 out += "*"
@@ -210,7 +215,7 @@ def FB_summary(nnl):
 # dates here should be previously-formatted as strings
 def FB_preamble(updated8, rotationday):
     out = "#Nests #Tracking #Migration\n"
-    out += "* = Unconfirmed\n"
+    out += "* = Unconfirmed, ☝️ = Private property, please be respectful\n"
     out += rotationday + " nest shift\n"
     out += "Last updated: " + updated8 + "\n\n"
     return out
@@ -266,10 +271,15 @@ def disc_posts(listfile, rundate, shiftdate):
 
 # generate and copy a FB post to the clipboard
 def FB_post(nnl, rundate, shiftdate, mt=None, slist=None):
-    detail = FB_format_nests(nnl)
-    summary = FB_summary(slist) if slist is not None else ''
-    empty = FB_emtpy(mt) if mt is not None else ''
-    pyperclip.copy(FB_preamble(rundate, shiftdate) + summary + decorate_text(" • ", "---==<>==---") + "\n\n" + detail + decorate_text(" • ", "---==<>==---") + "\n\n" + empty)
+    post = FB_preamble(rundate, shiftdate)
+    if slist is not None:
+        post += FB_summary(slist)
+        post += decorate_text(" • ", "---==<>==---") + "\n\n"
+    post += FB_format_nests(nnl, None)
+    if mt is not None:
+        post += decorate_text(" • ", "---==<>==---") + "\n\n"
+        #post += FB_empty(mt)
+    pyperclip.copy(post)
     print("Nest list copied to clipboard")
 
 
@@ -405,18 +415,12 @@ def main(city=None, date=None, format=None):
     nests, empties, species = get_nests(rotnum, dbc)
     print("Using the nest list from the " + shiftdate + " nest rotation")
     if format[0].lower() == 'f':
-<<<<<<< HEAD
-        FB_post(listfile, rundate, shiftdate)
-    if format[0].lower() == 'd':
-        disc_posts(listfile, rundate, shiftdate)
-=======
         format_name = "Facebook"
         FB_post(nests, rundate, shiftdate, slist=species, mt=empties)
     if format[0].lower() == 'd':
         format_name = "Discord"
         disc_posts(nests, rundate, shiftdate, slist=species)
->>>>>>> Save changes before rebasing form the master branch
-    return
+
 
 if __name__ == "__main__":
     main()
