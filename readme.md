@@ -2,25 +2,13 @@
 
 ##### A system for tracking PoGo nest migrations for your city's parks
 
-Note: the clipboard output is formatted to be used as a big Facebook tracking
-post, as it was originally intended to make the
-[PoGoCo](https://www.facebook.com/groups/PokemonGoColumbus) nest list more
-managable.
+CURRENTLY UNDERGOING A MAJOR REWRITE.  The migration to the SQLite database has been successful, but the unified terminal UI is not yet implemented, so there are still common functions that still require external software to complete.
 
-[(Link to example nest post)](https://www.facebook.com/groups/pokemongocolumbus/permalink/426082914471361/)
+[(Link to example nest post in the old format)](https://www.facebook.com/groups/pokemongocolumbus/permalink/426082914471361/)
 
 ## Instructions
 
-1. Make a file in the `Cities` folder for your area (PRs with new cities
-   welcome, see `Columbus.tsv` for the reference implementation).
-2. Alphabetize your nests for easier reference with `./sort <CITY>` (your city
-   must have its list alphabetized for your add city PR to be accepted)
-3. Every migration, run `./rotate -c <CITY>`, which will generate an output
-   file in the `hist-nest/\<CITY\>/YYYY-MM-DD.tsv` format
-4. Edit the file in the `hist-nest` folder for the rotation as new nests come
-   in
-5. To generate the text formatted to share with Facebook, run ` ./update -c
-   <CITY>`
+TODO: complete me once the rewrite is finished and stable enough to be worth writing detailed docs.  However, there is currently the choice to format the output for either Facebook or Discord.
 
 ### Notes
 

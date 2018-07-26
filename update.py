@@ -17,6 +17,8 @@ import rotate as dateparse
 import importoldlists as dbutils
 
 nested_dict = lambda: defaultdict(nested_dict)
+global private_reminder
+private_reminder = '☝'  # maybe this should be in a config file in the future
 
 '''
 Takes the city and date and outputs the FB-formatted nest post
@@ -156,7 +158,7 @@ def FB_format_nests(nnl):
             status = nnl[location][nestname]["Status"]
             nest = nnl[location][nestname]
             if nest["Private"]:
-                list += '☝️'  # private property reminder
+                list += private_reminder  # private property reminder
             list += nestname  # nest name
             if nest["Alt"] != "":
                 list += "/" + nest["Alt"]
@@ -178,7 +180,7 @@ def FB_empty(empties):
         for park in sorted(empties[location].keys()):
             if first is False:
                 list += ","
-            list += " " + park
+            list += " " + (private_reminder if empties[location][park]["Private"] else '') + park
             first = False
         list += '\n'
     return list
@@ -189,14 +191,11 @@ def make_summary(nnl):
     for location in nnl.keys():
         for park in nnl[location].keys():
             status = nnl[location][park]["Status"]
-            #if status == 0:  # remove empty nests
-            #    continue  # there shuold no longer be empty nests in the main list
             summary[nnl[location][park]["Species"]][park] = status
     return summary
 
 
-def FB_summary(nnl):
-    summary = make_summary(nnl)
+def FB_summary(summary):
     out = decorate_text("Summary", "[--  --]")
     for species in sorted(summary.keys()):
         out += "\n" + species + ":"
@@ -204,8 +203,8 @@ def FB_summary(nnl):
         for park in sorted(summary[species].keys()):
             if first is False:
                 out += ","
-            #if summary[species][park]["Private"]:
-            #    out += '☝️'
+            if summary[species][park]["Private"]:
+                out += private_reminder
             out += " " + park
             if summary[species][park] == 1:
                 out += "*"
@@ -217,7 +216,8 @@ def FB_summary(nnl):
 # dates here should be previously-formatted as strings
 def FB_preamble(updated8, rotationday):
     out = "#Nests #Tracking #Migration\n"
-    out += "* = Unconfirmed, ☝️ = Private property, please be respectful\n"
+    out += "* = Unconfirmed, "
+    out += private_reminder + "️ = Private property, please be respectful\n"
     out += rotationday + " nest shift\n"
     out += "Last updated: " + updated8 + "\n\n"
     return out
@@ -234,8 +234,7 @@ def disc_preamble(updated8, rotationday):
 # generate and copy a Discord post to the clipboard
 # assumes all lines are roughly the same length and you don't troll
 # with a 2000+ chars line for a single region
-def disc_posts(listfile, rundate, shiftdate):
-    nnl2, _ = load_nests(listfile)  # 2 to match other naming conventions
+def disc_posts(nnl2, rundate, shiftdate, slist=None):
     list = []
     olen = 0
     pre = disc_preamble(rundate, shiftdate)
