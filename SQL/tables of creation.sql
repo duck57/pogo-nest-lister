@@ -50,5 +50,5 @@ CREATE TABLE IF NOT EXISTS alt_names (
 	name text NOT NULL,
 	main_entry integer NOT NULL,
 	hideme integer,
-	FOREIGN KEY (main_entry) REFERENCES neighborhoods (id)
+	FOREIGN KEY (main_entry) REFERENCES nest_locations (nest_id)
 )
