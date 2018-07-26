@@ -37,3 +37,13 @@ WHERE nls.nest_id NOT IN (
 	SELECT nestid FROM species_list
 	WHERE rotation_num = 10
 )
+
+--selects everything but the alt names that would be displayed on a nest editing screen
+SELECT
+	nest_locations.*,
+	neighborhoods.name AS 'Subdivision',
+	regions.*
+FROM nest_locations
+	LEFT OUTER JOIN neighborhoods ON nest_locations.location = neighborhoods.id
+	LEFT OUTER JOIN regions ON neighborhoods.region = regions.id
+WHERE nest_id = ?
