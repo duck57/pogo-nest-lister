@@ -237,6 +237,7 @@ def disc_preamble(updated8, rotationday):
 def disc_posts(nnl2, rundate, shiftdate, slist=None):
     list = []
     olen = 0
+    max = 2000  # Discord post length limit
     pre = disc_preamble(rundate, shiftdate)
     olen += len(pre)
     list.append('')  # this is required for things to split up right later
@@ -258,14 +259,31 @@ def disc_posts(nnl2, rundate, shiftdate, slist=None):
 
     start = 0
     end = 0
-    num = olen//2000 + 1
+    num = olen//max + 1
+    trg = olen//num
+    outparts = []
     pts = len(list)//num
-    for pos in range(num):
-        start = pos*pts + 1
-        end = start + pts
-        pyperclip.copy(''.join(list[start:end]))
-        if pos+1 < num:
-            input("Copied part " + str(pos+1) + " of " + str(num) + " to the clipboard. Press enter or return to continue.")
+    ix = 0
+    count = 0
+    tmpstr = ""
+    for nbh in list:
+        if len(nbh) + count < max and count <= trg:
+            tmpstr += nbh
+            count += len(nbh)
+        else:
+            outparts.append(tmpstr)
+            tmpstr = nbh
+            count = 0
+            ix += 1
+    outparts.append(tmpstr)
+
+    pos = 0
+    num = len(outparts)
+    for part in outparts:
+        pyperclip.copy(part)
+        pos += 1
+        if pos < num:
+            input("Copied part " + str(pos) + " of " + str(num) + " to the clipboard. Press enter or return to continue.")
         else:
             print("Copied part " + str(num) + " of " + str(num) + " to the clipboard.")
 
