@@ -17,8 +17,14 @@ import rotate as dateparse
 import importoldlists as dbutils
 
 nested_dict = lambda: defaultdict(nested_dict)
-global private_reminder
+global private_reminder, ghost_icon, giraffe_icon, smallwhale, largewhale, rat_icon, hoothoot
 private_reminder = '☝'  # maybe this should be in a config file in the future
+ghost_icon = '👻'
+giraffe_icon = '🦒'
+smallwhale = '🐳'
+largewhale = '🐋'
+rat_icon = '🐀'
+hoothoot = '🦉'
 
 '''
 Takes the city and date and outputs the FB-formatted nest post
@@ -157,6 +163,8 @@ def FB_format_nests(nnl):
         for nestname in nnl[location]:
             status = nnl[location][nestname]["Status"]
             nest = nnl[location][nestname]
+            if nest["Ghost"]:
+                list += ghost_icon
             if nest["Private"]:
                 list += private_reminder  # private property reminder
             list += nestname  # nest name
@@ -190,17 +198,29 @@ def make_summary(nnl):
     summary = nested_dict()
     for location in nnl.keys():
         for park in nnl[location].keys():
-            status = nnl[location][park]["Status"]
-            summary[nnl[location][park]["Species"]][park] = status
+            summary[nnl[location][park]["Species"]][park] = nnl[location][park]["Status"]
     return summary
 
 
 def FB_summary(summary):
     out = decorate_text("Summary", "[--  --]")
     for species in sorted(summary.keys()):
-        out += "\n" + species + ":"
+        spico = ''
+        if summary[species]["-Spooked"] is True:
+            spico = ghost_icon
+        elif species == "Walimer":
+            spico = smallwhale
+        elif species == "Girafarig":
+            spico = giraffe_icon
+        elif species == "Hoothoot":
+            spico = hoothoot
+        elif species == "Rattata":
+            spico = rat_icon
+        out += "\n" + spico + species + ":"
         first = True
         for park in sorted(summary[species].keys()):
+            if park == "-Spooked":
+                continue
             if first is False:
                 out += ","
             if summary[species][park]["Private"]:
@@ -229,6 +249,31 @@ def disc_preamble(updated8, rotationday):
     out += "Last updated: " + updated8 + "\n\n"
     out += "**Bold** species are confirmed; _italic_ are single-reported\n\n"
     return out
+
+
+# discord post of top/important species & parks
+# maybe this should be from a config file?
+def disc_important_species(slist):
+    important_species = ["Magikarp","Walimer","Water Biome"]
+    out = decorate_text("Popular Species", "__****__")
+    count = 0
+    for species in sorted(slist.keys()):
+        if species not in important_species and slist[species]["-Spooked"] is not True:
+           continue
+        count += 1
+        out += '\n• ' + species + ": "
+        first = True
+        for park in slist[species]:
+            if park == "-Spooked":
+                continue
+            if first is False:
+                out += ', '
+            out += decorate_text(park, '****' if slist[species][park]["Status"] == 2 else '__')
+            first = False
+    if count == 0:
+        return ''
+    return out
+
 
 
 # generate and copy a Discord post to the clipboard
@@ -276,6 +321,8 @@ def disc_posts(nnl2, rundate, shiftdate, slist=None):
             count = 0
             ix += 1
     outparts.append(tmpstr)
+
+    outparts.append(disc_important_species(slist))
 
     pos = 0
     num = len(outparts)
@@ -341,6 +388,8 @@ def nstrw2nnl(nestrow, dbc=None):
     nst["Private"] = nestrow[6]
     nst["Note"] = nestrow[5]
     nst["Status"] = 2 if nestrow[1] == 1 else 1
+    nst["Ghost"] = True if (nestrow[10] == 'Ghost' or nestrow[11] == 'Ghost') else False
+    nst["SpNum"] = nestrow[9]
     if dbc is None:
         nst["Alt"] = ''
         return nst
@@ -375,10 +424,14 @@ def get_nests(rotnum, dbc):
                     ,nls.private AS 'Private Property?' --6
                     ,nbz.name AS 'Neighborhood' --7
                     ,regions.name AS 'Location' --8
+                    ,nsp.`#` AS Dex --9
+                    ,nsp.Type --10
+                    ,nsp.Subtype --11
                 FROM species_list AS sl
                     LEFT OUTER JOIN nest_locations AS nls ON (sl.nestid = nls.nest_id)
                     LEFT OUTER JOIN neighborhoods AS nbz ON (nls.location = nbz.id)
                     LEFT OUTER JOIN regions ON (nbz.region = regions.id)
+                    LEFT OUTER JOIN nesting_species AS nsp ON (sl.species_no = nsp.`#`)
                 WHERE sl.rotation_num = ?"""
     sqmt = """SELECT
                 NULL,NULL --fill in for 0 and 1
@@ -389,6 +442,7 @@ def get_nests(rotnum, dbc):
                 ,nls.private AS 'Private Property?' --6
                 ,nbz.name AS 'Neighborhood' --7
                 ,regions.name AS 'Location' --8
+                ,NULL,NULL,NULL --filler for 9,10,11
             FROM nest_locations AS nls
                 LEFT OUTER JOIN neighborhoods AS nbz ON (nls.location = nbz.id)
                 LEFT OUTER JOIN regions ON (nbz.region = regions.id)
@@ -396,15 +450,13 @@ def get_nests(rotnum, dbc):
                 SELECT nestid FROM species_list
                 WHERE rotation_num = ?
             )"""
-    cur = dbc.cursor()
-    cur.execute(sqnests, [rotnum])
-    rawnests = cur.fetchall()
-    for nestrow in rawnests:
-        nestout[get_sortloc(nestrow)][nestname(nestrow)] = nstrw2nnl(nestrow, dbc)
-        ssumry[nestrow[0]][nestname(nestrow)] = nstrw2nnl(nestrow, dbc)
-    cur.execute(sqmt, [rotnum])
-    emptyrows = cur.fetchall()
-    for nestrow in emptyrows:
+    for nestrow in dbc.execute(sqnests, [rotnum]):
+        nestdct = nstrw2nnl(nestrow, dbc)
+        nestout[get_sortloc(nestrow)][nestname(nestrow)] = nestdct
+        ssumry[nestrow[0]][nestname(nestrow)] = nestdct
+        if nestdct["Ghost"]:
+            ssumry[nestrow[0]]["-Spooked"] = True
+    for nestrow in dbc.execute(sqmt, [rotnum]):
         nestmt[nestrow[7]][nestname(nestrow)] = nstrw2nnl(nestrow, dbc)
     return nestout, nestmt, ssumry
 
