@@ -19,75 +19,14 @@ import readline
 nested_dict = lambda: defaultdict(nested_dict)
 
 
-class NestDisplay:
-    palette = [
-        ('body','default', 'default'),
-        ('foot','dark cyan', 'dark blue', 'bold'),
-        ('key','light cyan', 'dark blue', 'underline'),
-        ]
-
-    footer_text = ('foot', [
-        "Text Editor    ",
-        ('key', "F5"), " copy list  ",
-        ('key', "F9"), " quit",
-        ])
-
-    def __init__(self, db):
-        self.dbc = dbutils.create_connection(db)
-        self.listbox = urwid.ListBox('self.walker')
-        self.footer = urwid.AttrWrap(urwid.Text(self.footer_text),
-            "foot")
-        self.view = urwid.Frame(urwid.AttrWrap(self.listbox, 'body'),
-            footer=self.footer)
-
-    def main(self):
-        self.loop = urwid.MainLoop(self.view, self.palette,
-            unhandled_input=self.unhandled_keypress)
-        self.loop.run()
-
-    def unhandled_keypress(self, k):
-        """Last resort for keypresses."""
-
-        if k == "f5":
-            self.save_file()
-        elif k == "f9":
-            raise urwid.ExitMainLoop()
-        elif k == "delete":
-            # delete at end of line
-            self.walker.combine_focus_with_next()
-        elif k == "backspace":
-            # backspace at beginning of line
-            self.walker.combine_focus_with_prev()
-        elif k == "enter":
-            # start new line
-            self.walker.split_focus()
-            # move the cursor to the new line and reset pref_col
-            self.loop.process_input(["down", "home"])
-        elif k == "right":
-            w, pos = self.walker.get_focus()
-            w, pos = self.walker.get_next(pos)
-            if w:
-                self.listbox.set_focus(pos, 'above')
-                self.loop.process_input(["home"])
-        elif k == "left":
-            w, pos = self.walker.get_focus()
-            w, pos = self.walker.get_prev(pos)
-            if w:
-                self.listbox.set_focus(pos, 'below')
-                self.loop.process_input(["end"])
-        else:
-            return
-        return True
-
-
-def selectlist(prompt, size):
+def selectlist(prompt, size, start):
     while True:
         try:
             selection = int(input(prompt))
         except (ValueError):
             print("Enter an integer")
             continue
-        if selection in range(1,size+1):
+        if selection in range(start,size+1):
             return selection
         else:
             print("Selection outside range")
@@ -104,17 +43,20 @@ def input_with_prefill(prompt, text):
     return result
 
 
-def update_park(dbc, rotnum):
-    print("q to quit without saving, empty to quit & commit changes")
-    search = input("Which park do you want to search? ").strip()
-    if search == '':
-        return 1
-    if search.lower() == 'q':
-        return -5
+def search_nest_query(dbc, search):
+    if dateparse.str_int(search):
+        result = dbc.execute("SELECT * FROM nest_locations WHERE nest_id = ?", [search]).fetchone()
+        if result is not None:
+            return [result]
     results1, _ = dbutils.query_nest(search, dbc)
     if results1 is None:
         print("No nests found")
         return False
+    return results1
+
+
+# returns the park ID of the selected park
+def disp_park_list(dbc, results1):
     count = 0
     results2 = nested_dict()
     choices = {}
@@ -129,14 +71,56 @@ def update_park(dbc, rotnum):
         results2[nid]["Short"] = nest[2]
         results2[nid]["LocID"] = nest[3]
         results2[nid]["Count"] = count
+    choices[0] = None
+    results2[None]["Name"] = "None of these"
     for choice in sorted(choices.keys()):
-        print(str(choice) + ". " + results2[choices[choice]]["Name"])
+        if choice == 0:
+            print("0. None of these")
+            continue
+        neighborhood = "Missing"
+        if results2[choices[choice]]["LocID"] is not None:
+            neighborhood = dbc.execute("SELECT name FROM neighborhoods WHERE id = ?", [results2[choices[choice]]["LocID"]]).fetchone()[0]
+        print(str(choice) + ". " + results2[choices[choice]]["Name"], " [" + neighborhood + "]")
     selected = -1
-    if count==1:
+    if count == 1:
         selected = 1
     else:
-        selected = selectlist("Enter the number of the park you would like to display: ", count)
-    selected = choices[selected]
+        selected = selectlist("Enter the number of the park you would like to display: ", count, 0)
+    return choices[selected]
+
+
+def match_species(dbc, sptxt):
+    reslst = nested_dict()
+    num = 0
+    for result in dbc.execute("SELECT * FROM nesting_species WHERE Name like ?", ['%'+sptxt+'%']):
+        num += 1
+        reslst[num] = result
+    if len(reslst) == 0:
+        return None, sptxt
+    if len(reslst) == 1:
+        return reslst[1][0], reslst[1][1]
+    reslst[0] = (None, sptxt)
+    for item in reslst:
+        print(str(item) + '. ' + reslst[item][1] + ' [' + str(reslst[item][0]) + ']')
+    option = selectlist("Index of species (not species number): ", num, 0)
+    return reslst[option][0], reslst[option][1]
+
+
+def update_park(dbc, rotnum):
+    print("q to quit without saving, empty to quit & commit changes")
+    search = input("Which park do you want to search? ").strip().lower()
+    if search == '':
+        return 1
+    if search == 'q':
+        return -5
+    results1 = search_nest_query(dbc, search)
+    if results1 is False:
+        return False
+
+    selected = disp_park_list(dbc, results1)
+    if selected is None:
+        return False
+
     sq1 = "SELECT * FROM nest_locations WHERE nest_id=?"
     sq2 = "SELECT * FROM alt_names WHERE main_entry=?"
     sq3 = "SELECT * FROM neighborhoods WHERE id=?"
@@ -182,24 +166,30 @@ def update_park(dbc, rotnum):
     if len(rwnst)>0:
         current = rwnst[0][0]
         confirm = rwnst[0][1]
-    upd8nest = "UPDATE species_list SET species_txt = ?, confirmation = ? WHERE rotation_num = ? AND nestid = ?"
-    svnstsql = "INSERT INTO species_list(species_txt, confirmation, rotation_num, nestid) VALUES (?,?,?,?)"
+    upd8nest = "UPDATE species_list SET species_no = ?, species_txt = ?, confirmation = ? WHERE rotation_num = ? AND nestid = ?"
+    svnstsql = "INSERT INTO species_list(species_no, species_txt, confirmation, rotation_num, nestid) VALUES (?,?,?,?,?)"
     delnest  = "DELETE FROM species_list WHERE rotation_num = ? AND nestid = ?"
     if current is None:
         current = ''
         upd8nest = svnstsql  # adds a new nest if it's currently empty
     elif confirm is not None:
         current += "|" + str(confirm)
-    species = input_with_prefill("Species|confirm? ", current)
+    species = input_with_prefill("Species|confirm? ", current).strip()
     print("")
 
     conf = 1 if len(species.split('|'))>1 else None
     species = species.split('|')[0].strip()
+    spnum = None
     if species == '':
         species = None
         dbc.execute(delnest, (rotnum, inforow[0]))
         return False
-    savenest = (species, conf, rotnum, inforow[0])
+    if dateparse.str_int(species):
+        spnum = int(species)
+        species = dbc.execute("SELECT * FROM nesting_species WHERE `#` = ?", [spnum]).fetchone()[1]
+    else:
+        spnum, species = match_species(dbc, species)
+    savenest = (spnum, species, conf, rotnum, inforow[0])
     dbc.execute(upd8nest, savenest)
 
     return False
