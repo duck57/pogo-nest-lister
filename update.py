@@ -226,7 +226,7 @@ def FB_summary(summary):
             if summary[species][park]["Private"]:
                 out += private_reminder
             out += " " + park
-            if summary[species][park] == 1:
+            if summary[species][park]["Status"] == 1:
                 out += "*"
             first = False
     out += "\n\n"
