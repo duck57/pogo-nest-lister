@@ -25,6 +25,7 @@ smallwhale = '🐳'
 largewhale = '🐋'
 rat_icon = '🐀'
 hoothoot = '🦉'
+water_icon = '💦'
 
 '''
 Takes the city and date and outputs the FB-formatted nest post
@@ -208,14 +209,18 @@ def FB_summary(summary):
         spico = ''
         if summary[species]["-Spooked"] is True:
             spico = ghost_icon
-        elif species == "Walimer":
+        elif species == "Wailmer":
             spico = smallwhale
+        elif species == "Wailord":
+            spico = largewhale
         elif species == "Girafarig":
             spico = giraffe_icon
         elif species == "Hoothoot":
             spico = hoothoot
         elif species == "Rattata":
             spico = rat_icon
+        elif species == "Water Biome":
+            spico = water_icon
         out += "\n" + spico + species + ":"
         first = True
         for park in sorted(summary[species].keys()):
