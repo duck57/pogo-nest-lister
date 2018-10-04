@@ -14,6 +14,7 @@ import update as output
 import importoldlists as dbutils
 import rotate as dateparse
 import readline
+import click
 
 
 nested_dict = lambda: defaultdict(nested_dict)
@@ -195,9 +196,17 @@ def update_park(dbc, rotnum):
     return False
 
 
-def main():
+@click.command()
+@click.option(
+        '-d',
+        '--date',
+        default="today",
+        prompt="Date to edit",
+        help="Date you choose to edit, can be absolute (YYYY-MM-DD) or relative (w+2)"
+        )
+def main(date):
     dbc = dbutils.create_connection("nests.db")
-    rotnum, d8 = output.get_rot8d8(dateparse.getdate("t"), dbc)
+    rotnum, d8 = output.get_rot8d8(dateparse.getdate(date), dbc)
     print("Editing rotation " + str(rotnum) + " from " + d8)
     stop = False
     while stop is False:
