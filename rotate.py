@@ -5,13 +5,13 @@
 
 import os
 import importlib
-#sort = imp.load_source('sort', './sort')
 import sort
 from shutil import copyfile
 import datetime #as dateutil
 from dateutil.parser import *
 from dateutil.relativedelta import *
 import click
+import importoldlists as dbutils
 
 
 # Creates a new nest list in the hist-list/<CITY> folder with a YYYY-MM-DD name
@@ -91,25 +91,27 @@ def getdate(date=None):
         prompt="Date of nest shift",
         help="Date when the nest shift occured, can be absolute (YYYY-MM-DD) or relative (w+2)"
         )
-@click.option(
-        '-c',
-        '--city',
-        '-f',
-        prompt="City to rotate",
-        help="The chosen city will be the one to have a fresh copy of its nest list created in its folder in hist-list/"
-        )
 # main method
-def main(date, city):
-    cfile, cname = val_city(city.strip())
-    odir = outpath + cname + "/"
-    check_dir(odir)
+def main(date):
     d8 = str(getdate(date.strip()))
-    ofile = odir + d8 + sort.ext
-    if os.path.exists(ofile):
-        print("File " + ofile + " already exists.  Please delete it and run this program again if you want to reset it.")
-    else:
-        copyfile(cfile, ofile)
-        print("Successfully created new nest list at " + ofile)
+    dbc = dbutils.create_connection("nests.db")
+    d8tst = "SELECT * FROM rotation_dates WHERE date LIKE ?"
+    cur = dbc.cursor()
+    cur.execute(d8tst, [d8])
+    if len(cur.fetchall()) > 0:
+        print("Rotation already exists for " + d8)
+        return
+    add8 = "INSERT INTO rotation_dates(date) VALUES(?)"
+    cur.execute(add8, [d8])
+    rotnum = cur.lastrowid
+    perm_nst = "SELECT nest_id, permanent_species FROM nest_locations WHERE permanent_species IS NOT NULL"
+    cur.execute(perm_nst)
+    permanent = cur.fetchall()
+    add_prm = "INSERT INTO species_list(rotation_num, nestid, species_txt, confirmation) VALUES(?,?,?,1) "
+    for perm in permanent:
+        cur.execute(add_prm, (rotnum, perm[0], perm[1]))
+    print("Added rotation " + str(rotnum) + " on " + d8)
+    dbc.commit()
 
 
 if __name__ == "__main__":
