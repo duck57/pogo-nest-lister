@@ -192,8 +192,11 @@ def update_park(dbc, rotnum):
             species = species[1]
         else:
             print(f"#{spnum:03} is not a nesting species.  No changes applied.")
+            return False  # something to prevent the insertion of junk nests?
     else:
         spnum, species = match_species(dbc, species)
+    if spnum is None:
+        print(f"Using verbatium species as a string and not a species number")
     savenest = (spnum, species, conf, rotnum, inforow[0])
     dbc.execute(upd8nest, savenest)
 
