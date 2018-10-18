@@ -8,10 +8,15 @@ are still common functions that still require external software to complete.
 
 Update 04 October 2018: limitations of SQLite before a full TUI solution is
 implemented have proven too aggrivating and I'm moving to Maria+Django before
-working more on the TUI stuff.  This will probably be in a new repository.  The
-code in its current state works, but isn't elegant to use.
+working more on the TUI stuff or other major improvements.  This will probably
+be in a new repository.  The code in its current state works, but isn't elegant
+to use.
 
-[(Link to example nest post in the old format)](https://www.facebook.com/groups/pokemongocolumbus/permalink/426082914471361/)
+Update 18 October 2018: progress on updating may change due to Niantic changing
+spawn and potentially nesting behavior.  Specifically, looking for how to
+handle biomes and the possibility of dual-nests.
+
+##### [Link to example nest post](https://www.facebook.com/groups/pokemongocolumbus/permalink/554505388295779/)
 
 ## Instructions
 

@@ -187,7 +187,11 @@ def update_park(dbc, rotnum):
         return False
     if dateparse.str_int(species):
         spnum = int(species)
-        species = dbc.execute("SELECT * FROM nesting_species WHERE `#` = ?", [spnum]).fetchone()[1]
+        species = dbc.execute("SELECT * FROM nesting_species WHERE `#` = ?", [spnum]).fetchone()
+        if species is not None:
+            species = species[1]
+        else:
+            print(f"#{spnum:03} is not a nesting species.  No changes applied.")
     else:
         spnum, species = match_species(dbc, species)
     savenest = (spnum, species, conf, rotnum, inforow[0])
