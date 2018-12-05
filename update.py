@@ -239,18 +239,18 @@ def FB_summary(summary):
 
 # Preamble for FB post
 # dates here should be previously-formatted as strings
-def FB_preamble(updated8, rotationday):
+def FB_preamble(updated8, rotationday, rotnum):
     out = "#Nests #Tracking #Migration\n"
     out += "* = Unconfirmed, "
     out += private_reminder + "️ = Private property, please be respectful\n"
-    out += rotationday + " nest shift\n"
+    out += rotationday + " nest shift (#" + str(rotnum) + ")\n"
     out += "Last updated: " + updated8 + "\n\n"
     return out
 
 
 # Preamble for Discord
-def disc_preamble(updated8, rotationday):
-    out = decorate_text(rotationday, "``") + " nest shift\n"
+def disc_preamble(updated8, rotationday, rotnum):
+    out = decorate_text(rotationday, "``") + " nest shift (#" + str(rotnum) + ")\n"
     out += "Last updated: " + updated8 + "\n\n"
     out += "**Bold** species are confirmed; _italic_ are single-reported\n\n"
     return out
@@ -284,11 +284,11 @@ def disc_important_species(slist):
 # generate and copy a Discord post to the clipboard
 # assumes all lines are roughly the same length and you don't troll
 # with a 2000+ chars line for a single region
-def disc_posts(nnl2, rundate, shiftdate, slist=None):
+def disc_posts(nnl2, rundate, shiftdate, slist=None, rotnum=0):
     list = []
     olen = 0
     max = 2000  # Discord post length limit
-    pre = disc_preamble(rundate, shiftdate)
+    pre = disc_preamble(rundate, shiftdate, rotnum)
     olen += len(pre)
     list.append('')  # this is required for things to split up right later
     list.append(pre)
@@ -341,8 +341,8 @@ def disc_posts(nnl2, rundate, shiftdate, slist=None):
 
 
 # generate and copy a FB post to the clipboard
-def FB_post(nnl, rundate, shiftdate, mt=None, slist=None):
-    post = FB_preamble(rundate, shiftdate)
+def FB_post(nnl, rundate, shiftdate, mt=None, slist=None, rotnum=0):
+    post = FB_preamble(rundate, shiftdate, rotnum)
     if slist is not None:
         post += FB_summary(slist)
         post += decorate_text(" • ", "---==<>==---") + "\n\n"
@@ -496,10 +496,10 @@ def main(city=None, date=None, format=None):
     print("Using the nest list from the " + shiftdate + " nest rotation")
     if format[0].lower() == 'f':
         format_name = "Facebook"
-        FB_post(nests, rundate, shiftdate, slist=species, mt=empties)
+        FB_post(nests, rundate, shiftdate, slist=species, mt=empties, rotnum=rotnum)
     if format[0].lower() == 'd':
         format_name = "Discord"
-        disc_posts(nests, rundate, shiftdate, slist=species)
+        disc_posts(nests, rundate, shiftdate, slist=species, rotnum=rotnum)
 
 
 if __name__ == "__main__":
