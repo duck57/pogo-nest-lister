@@ -7,14 +7,11 @@ been successful, but the unified terminal UI is not yet implemented, so there
 are still common functions that still require external software to complete.
 
 Update 04 October 2018: limitations of SQLite before a full TUI solution is
-implemented have proven too aggrivating and I'm moving to Maria+Django before
-working more on the TUI stuff or other major improvements.  This will probably
-be in a new repository.  The code in its current state works, but isn't elegant
-to use.
+implemented have proven too aggrivating and I'm moving to Maria+Django (or
+maybe moving from Python to Elixir/Phoenix) before working more on the TUI
+stuff or other major improvements.  This will probably be in a new repository.
+The code in its current state works, but isn't elegant to use.
 
-Update 18 October 2018: progress on updating may change due to Niantic changing
-spawn and potentially nesting behavior.  Specifically, looking for how to
-handle biomes and the possibility of dual-nests.
 
 ##### [Link to example nest post](https://www.facebook.com/groups/pokemongocolumbus/permalink/554505388295779/)
 
@@ -22,7 +19,11 @@ handle biomes and the possibility of dual-nests.
 
 TODO: complete me once the rewrite is finished and stable enough to be worth
 writing detailed docs.  However, there is currently the choice to format the
-output for either Facebook or Discord.
+output for either Facebook or Discord.  
+
+14 Dec 2018: This update may change the model from being a locally-run app to a
+server-hosted app and future instructions may be more focused on notes to self
+and end user workflows instead of technical install details.
 
 ### Notes
 
