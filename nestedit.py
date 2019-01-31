@@ -3,19 +3,14 @@
 # -*- coding: UTF-8 -*-
 # vim: set fileencoding=UTF-8 :
 
-import sys
-import os
-import sqlite3
-import urwid
-from collections import OrderedDict
-from sortedcontainers import SortedList
-from collections import defaultdict
-import update as output
-import importoldlists as dbutils
-import rotate as dateparse
 import readline
+from collections import defaultdict
+
 import click
 
+import importoldlists as dbutils
+import rotate as dateparse
+import update as output
 
 nested_dict = lambda: defaultdict(nested_dict)
 
@@ -27,7 +22,7 @@ def selectlist(prompt, size, start):
         except (ValueError):
             print("Enter an integer")
             continue
-        if selection in range(start,size+1):
+        if selection in range(start, size + 1):
             return selection
         else:
             print("Selection outside range")
@@ -38,6 +33,7 @@ def input_with_prefill(prompt, text):
     def hook():
         readline.insert_text(text)
         readline.redisplay()
+
     readline.set_pre_input_hook(hook)
     result = input(prompt)
     readline.set_pre_input_hook()
@@ -80,7 +76,9 @@ def disp_park_list(dbc, results1):
             continue
         neighborhood = "Missing"
         if results2[choices[choice]]["LocID"] is not None:
-            neighborhood = dbc.execute("SELECT name FROM neighborhoods WHERE id = ?", [results2[choices[choice]]["LocID"]]).fetchone()[0]
+            neighborhood = \
+            dbc.execute("SELECT name FROM neighborhoods WHERE id = ?", [results2[choices[choice]]["LocID"]]).fetchone()[
+                0]
         print(str(choice) + ". " + results2[choices[choice]]["Name"], " [" + neighborhood + "]")
     selected = -1
     if count == 1:
@@ -93,7 +91,7 @@ def disp_park_list(dbc, results1):
 def match_species(dbc, sptxt):
     reslst = nested_dict()
     num = 0
-    for result in dbc.execute("SELECT * FROM nesting_species WHERE Name like ?", ['%'+sptxt+'%']):
+    for result in dbc.execute("SELECT * FROM nesting_species WHERE Name like ?", ['%' + sptxt + '%']):
         num += 1
         reslst[num] = result
     if len(reslst) == 0:
@@ -160,16 +158,16 @@ def update_park(dbc, rotnum):
     for alt in alts:
         print(str(alt))"""
 
-
     print("\nSelected Nest: " + sinforow[0] + " " + sinforow[1])
-    rwnst = dbc.execute("SELECT species_txt, confirmation FROM species_list WHERE rotation_num = ? AND nestid = ?", (rotnum, inforow[0])).fetchall()
+    rwnst = dbc.execute("SELECT species_txt, confirmation FROM species_list WHERE rotation_num = ? AND nestid = ?",
+                        (rotnum, inforow[0])).fetchall()
     current, confirm = None, None
-    if len(rwnst)>0:
+    if len(rwnst) > 0:
         current = rwnst[0][0]
         confirm = rwnst[0][1]
     upd8nest = "UPDATE species_list SET species_no = ?, species_txt = ?, confirmation = ? WHERE rotation_num = ? AND nestid = ?"
     svnstsql = "INSERT INTO species_list(species_no, species_txt, confirmation, rotation_num, nestid) VALUES (?,?,?,?,?)"
-    delnest  = "DELETE FROM species_list WHERE rotation_num = ? AND nestid = ?"
+    delnest = "DELETE FROM species_list WHERE rotation_num = ? AND nestid = ?"
     if current is None:
         current = ''
         upd8nest = svnstsql  # adds a new nest if it's currently empty
@@ -178,7 +176,7 @@ def update_park(dbc, rotnum):
     species = input_with_prefill("Species|confirm? ", current).strip()
     print("")
 
-    conf = 1 if len(species.split('|'))>1 else None
+    conf = 1 if len(species.split('|')) > 1 else None
     species = species.split('|')[0].strip()
     spnum = None
     if species == '':
@@ -205,12 +203,12 @@ def update_park(dbc, rotnum):
 
 @click.command()
 @click.option(
-        '-d',
-        '--date',
-        default="today",
-        prompt="Date to edit",
-        help="Date you choose to edit, can be absolute (YYYY-MM-DD) or relative (w+2)"
-        )
+    '-d',
+    '--date',
+    default="today",
+    prompt="Date to edit",
+    help="Date you choose to edit, can be absolute (YYYY-MM-DD) or relative (w+2)"
+)
 def main(date):
     dbc = dbutils.create_connection("nests.db")
     rotnum, d8 = output.get_rot8d8(dateparse.getdate(date), dbc)

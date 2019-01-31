@@ -3,18 +3,17 @@
 # -*- coding: UTF-8 -*-
 # vim: set fileencoding=UTF-8 :
 
-import os
-import importlib
-import datetime
-import click
-from sortedcontainers import SortedList
-from collections import defaultdict
 import csv
-import sqlite3
-from sqlite3 import Error
+import datetime
+import os
+from collections import defaultdict
+
+import click
 import pyperclip
-import rotate as dateparse
+from sortedcontainers import SortedList
+
 import importoldlists as dbutils
+import rotate as dateparse
 
 nested_dict = lambda: defaultdict(nested_dict)
 global private_reminder, ghost_icon, giraffe_icon, smallwhale, largewhale, rat_icon, hoothoot
@@ -66,7 +65,7 @@ def choose_folder(city=None):
 
 # decorates a string of text by inserting it halfway between the decoration string
 def decorate_text(text, decor):
-    stl = len(decor)//2
+    stl = len(decor) // 2
     return decor[:stl] + text + decor[stl:]
 
 
@@ -81,7 +80,7 @@ def find_nest_list(path, date):
     loc = searchlist.bisect_right(str(date) + "ZZZ ") - 1
     if loc < 0:
         print("Date " + str(date) +
-            " is prior to any stored rotations.  Using oldest available data instead.")
+              " is prior to any stored rotations.  Using oldest available data instead.")
         loc = 0
     recentrotation = searchlist[loc].split(".")[0]
     return dateparse.getdate(recentrotation), path + searchlist[loc]
@@ -237,6 +236,7 @@ def FB_summary(summary):
     out += "\n\n"
     return out
 
+
 # Preamble for FB post
 # dates here should be previously-formatted as strings
 def FB_preamble(updated8, rotationday, rotnum):
@@ -259,12 +259,12 @@ def disc_preamble(updated8, rotationday, rotnum):
 # discord post of top/important species & parks
 # maybe this should be from a config file?
 def disc_important_species(slist):
-    important_species = ["Magikarp","Walimer","Water Biome"]
+    important_species = ["Magikarp", "Walimer", "Water Biome"]
     out = decorate_text("Popular Species", "__****__")
     count = 0
     for species in sorted(slist.keys()):
         if species not in important_species and slist[species]["-Spooked"] is not True:
-           continue
+            continue
         count += 1
         out += '\n• ' + species + ": "
         first = True
@@ -278,7 +278,6 @@ def disc_important_species(slist):
     if count == 0:
         return ''
     return out
-
 
 
 # generate and copy a Discord post to the clipboard
@@ -309,10 +308,10 @@ def disc_posts(nnl2, rundate, shiftdate, slist=None, rotnum=0):
 
     start = 0
     end = 0
-    num = olen//max + 1
-    trg = olen//num
+    num = olen // max + 1
+    trg = olen // num
     outparts = []
-    pts = len(list)//num
+    pts = len(list) // num
     ix = 0
     count = 0
     tmpstr = ""
@@ -335,7 +334,8 @@ def disc_posts(nnl2, rundate, shiftdate, slist=None, rotnum=0):
         pyperclip.copy(part)
         pos += 1
         if pos < num:
-            input("Copied part " + str(pos) + " of " + str(num) + " to the clipboard. Press enter or return to continue.")
+            input(
+                "Copied part " + str(pos) + " of " + str(num) + " to the clipboard. Press enter or return to continue.")
         else:
             print("Copied part " + str(num) + " of " + str(num) + " to the clipboard.")
 
@@ -417,8 +417,8 @@ def nestname(nestrow):
 # returns the nested nest list and stack of empties
 def get_nests(rotnum, dbc):
     nestout = nested_dict()
-    nestmt  = nested_dict()
-    ssumry  = nested_dict()
+    nestmt = nested_dict()
+    ssumry = nested_dict()
     sqnests = """SELECT
                     sl.species_txt AS Species --0
                     ,sl.confirmation AS 'Confirmed?' --1
@@ -468,12 +468,12 @@ def get_nests(rotnum, dbc):
 
 @click.command()
 @click.option(
-        '-d',
-        '--date',
-        default=str(datetime.datetime.today().date()),
-        prompt="Generate list of nests as of this date",
-        help="Generate list of nests as of this date"
-        )
+    '-d',
+    '--date',
+    default=str(datetime.datetime.today().date()),
+    prompt="Generate list of nests as of this date",
+    help="Generate list of nests as of this date"
+)
 @click.option(
     '-o',
     '--format',

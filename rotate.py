@@ -3,16 +3,15 @@
 # -*- coding: UTF-8 -*-
 # vim: set fileencoding=UTF-8 :
 
+import datetime  # as dateutil
 import os
-import importlib
-import sort
-from shutil import copyfile
-import datetime #as dateutil
+
+import click
 from dateutil.parser import *
 from dateutil.relativedelta import *
-import click
-import importoldlists as dbutils
 
+import importoldlists as dbutils
+import sort
 
 # Creates a new nest list in the hist-list/<CITY> folder with a YYYY-MM-DD name
 
@@ -25,7 +24,7 @@ date = None
 # Probably can share more code with sort.py methods
 # but they're slightly different
 def val_city(city=None):
-    cpath = sort.choose_city(city+sort.ext)  # path to the city's template file
+    cpath = sort.choose_city(city + sort.ext)  # path to the city's template file
     city2 = cpath.split("/")[1][:-len(sort.ext)]  # just the city name
     return cpath, city2
 
@@ -47,7 +46,7 @@ def expand8(chr):
     }.get(chr, 0)
 
 
-# checks if a string will convert to an it
+# checks if a string will convert to an int
 # why isn't this in the standard library?
 def str_int(str):
     try:
@@ -63,18 +62,18 @@ def getdate(date=None):
     while True:
         if date is None:
             date = input("What is the date of the nest rotation (blank for today, " + str(today.date()) + ")? ")
-        if date.strip() == "" or (len(date)==1 and date[0].lower()=="t"):
+        if date.strip() == "" or (len(date) == 1 and date[0].lower() == "t"):
             return today.date()
         if date[0].lower() in "ymwt" and len(date) > 2 and date[1] in "+-" and str_int(date[1:]):
             dateshift = int(date[1:])
             units = date[0].lower()
-            #print("shifting by " + str(dateshift) + " " + expand8(units))
+            # print("shifting by " + str(dateshift) + " " + expand8(units))
             createdate = today + {
                 'y': relativedelta(years=dateshift),
                 'm': relativedelta(months=dateshift),
                 'w': relativedelta(weeks=dateshift),
                 't': relativedelta(days=dateshift)
-                }.get(units, 0)
+            }.get(units, 0)
             return createdate.date()
         try:
             return parse(date).date()
@@ -85,12 +84,12 @@ def getdate(date=None):
 
 @click.command()
 @click.option(
-        '-d',
-        '--date',
-        default=str(datetime.datetime.today().date()),
-        prompt="Date of nest shift",
-        help="Date when the nest shift occured, can be absolute (YYYY-MM-DD) or relative (w+2)"
-        )
+    '-d',
+    '--date',
+    default=str(datetime.datetime.today().date()),
+    prompt="Date of nest shift",
+    help="Date when the nest shift occured, can be absolute (YYYY-MM-DD) or relative (w+2)"
+)
 # main method
 def main(date):
     d8 = str(getdate(date.strip()))
